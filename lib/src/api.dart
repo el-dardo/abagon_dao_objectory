@@ -4,15 +4,21 @@ class ObjectoryDaoImplementation extends DaoImplementation {
 
   String _dbUri;
   Objectory _db;
+  Function _registerClassesCallback;
   
-  ObjectoryDaoImplementation(this._dbUri);
-  
-  Future init() {
-    objectory = _db = new ObjectoryDirectConnectionImpl( _dbUri, () {
+  ObjectoryDaoImplementation(this._dbUri,[this._db]) {
+    _registerClassesCallback = () {
       for( var entity in entities ) {
         _db.registerClass( entity, ()=>createEntity(entity) );
       }
-    }, false );
+    };
+    if( _db==null ) {
+      _db = new ObjectoryDirectConnectionImpl( _dbUri, _registerClassesCallback, false );
+    }
+    objectory = _db;
+  }
+  
+  Future init() {
     return _db.initDomainModel();
   }
   
@@ -21,7 +27,7 @@ class ObjectoryDaoImplementation extends DaoImplementation {
   }
 }
 
-abstract class ObjectoryDao<T extends ModelEntity,ID> implements Dao<T,ID> {
+abstract class ObjectoryDao<T extends ObjectoryModelEntity> implements Dao<T> {
 
   final String _collectionName;
   final ObjectoryDaoImplementation _daoImpl;
@@ -31,14 +37,14 @@ abstract class ObjectoryDao<T extends ModelEntity,ID> implements Dao<T,ID> {
   ObjectoryQueryBuilder get _query => new ObjectoryQueryBuilder(_collectionName);
   Objectory get _db => _daoImpl._db;
 
-  Future<T> getById( ObjectId id ) {
-    var selector = _query.eq("_id", id);
+  Future<T> getById( String id ) {
+    var selector = _query.eq("_id", new ObjectId.fromHexString(id));
     return _db.findOne(selector);
   }
   
   Future<ObjectId> save( T entity ) {
     return _db.save(entity).then( (_) {
-      return entity.id;
+      return entity.uniqueId;
     });
   }
 
@@ -70,11 +76,13 @@ abstract class ObjectoryDao<T extends ModelEntity,ID> implements Dao<T,ID> {
   
 }
 
-abstract class ObjectoryModelEntity<ID> extends PersistentObject implements ModelEntity<ID> {
+abstract class ObjectoryModelEntity extends PersistentObject implements ModelEntity {
   
   final String _dbType; 
   
   ObjectoryModelEntity(this._dbType);
   
   String get dbType => _dbType;
+  String get uniqueId => id.toHexString();
+
 }

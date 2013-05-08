@@ -32,7 +32,7 @@ Future closeModel() {
  * This is the objectory specific implementation of the abstract [ModelEntity]
  * named [Entry].
  */
-class _Entry extends ObjectoryModelEntity<String> implements Entry {
+class _Entry extends ObjectoryModelEntity implements Entry {
 
   _Entry([DateTime date, num hours, String activity]) : super("Entry") {
     this.date = date;
@@ -55,7 +55,7 @@ class _Entry extends ObjectoryModelEntity<String> implements Entry {
  * This is the objectory specific implementation of the abstract [Dao]
  * named [EntryDao].
  */
-class _EntryDao extends ObjectoryDao<Entry,String> implements EntryDao {
+class _EntryDao extends ObjectoryDao<_Entry> implements EntryDao {
   
   _EntryDao(ObjectoryDaoImplementation daoImpl) : super("Entry",daoImpl);
 

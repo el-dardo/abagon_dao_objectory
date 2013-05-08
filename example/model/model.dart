@@ -11,7 +11,7 @@ import "package:abagon_dao/abagon_dao.dart";
 /**
  * [Entry] is the only [ModelEntity] in this example.
  */
-abstract class Entry implements ModelEntity<String> {
+abstract class Entry implements ModelEntity {
   DateTime date;
   num hours;
   String activity;
@@ -27,7 +27,7 @@ abstract class Entry implements ModelEntity<String> {
 /**
  * [EntryDao] is the [Dao] definition for [Entry]
  */
-abstract class EntryDao implements Dao<Entry,String> {
+abstract class EntryDao implements Dao<Entry> {
   factory EntryDao() => abagon.createDao("Entry");
   
   Future<Entry> getByDate( DateTime date );
