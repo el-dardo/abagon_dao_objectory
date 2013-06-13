@@ -20,6 +20,7 @@ class MockObjectoryDaoImplementation extends Mock implements ObjectoryDaoImpleme
   final Objectory _db;
   MockObjectoryDaoImplementation(this._db);
 }
+class MockObjectoryCollection extends Mock implements ObjectoryCollection {}
 class MockEntity extends Mock implements ObjectoryModelEntity {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,7 +29,7 @@ class TestModelEntity extends ObjectoryModelEntity {
   TestModelEntity(String dbType) : super(dbType);
 }
 class TestObjectoryDao extends ObjectoryDao {
-  TestObjectoryDao(String collectionName, ObjectoryDaoImplementation daoImpl) : super(collectionName,daoImpl);
+  TestObjectoryDao(Type collection, ObjectoryDaoImplementation daoImpl) : super(collection,daoImpl);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +52,7 @@ void main() {
       mockDb.when( callsTo("initDomainModel") ).alwaysReturn( new Future.value() );
       
       return impl.init().then( (_) {
-        mockDb.getLogs( callsTo("initDomainModel") ).verify(happenedOnce);
+        mockDb.calls("initDomainModel").verify(happenedOnce);
       });
     });
 
@@ -60,21 +61,21 @@ void main() {
       mockDb.when( callsTo("close") ).alwaysReturn( new Future.value() );
 
       return impl.close().then((_) {
-        mockDb.getLogs( callsTo("close") ).verify(happenedOnce);
+        mockDb.calls("close").verify(happenedOnce);
       });
     });
 
     test( "_registerClassesCallback registers domain classes in Objectory", () {
-      const COUNT=2;
+      const types = const [ String, int, bool ];
       
-      for( var i=0 ; i<COUNT ; i++ ) {
-        impl.registerClass( i.toString(), (_)=>null, ()=>null, ()=>null );
+      for( var i=0 ; i<types.length ; i++ ) {
+        impl.registerClass( types[i], (_)=>null, ()=>null, ()=>null );
       }
       
       impl._registerClassesCallback();
 
-      for( var i=0 ; i<COUNT ; i++ ) {
-        mockDb.getLogs( callsTo("registerClass",i.toString(),anything) ).verify(happenedOnce);
+      for( var i=0 ; i<types.length ; i++ ) {
+        mockDb.calls("registerClass",types[i],anything).verify(happenedOnce);
       }
     });
 
@@ -82,15 +83,21 @@ void main() {
 
   group( "ObjectoryDao:", () {
 
-    var db, daoImpl, dao, entity;
+    MockObjectory db;
+    MockObjectoryDaoImplementation daoImpl;
+    TestObjectoryDao dao;
+    MockObjectoryCollection collection;
+    MockEntity entity;
 
     setUp( () {
       db = new MockObjectory();
       daoImpl = new MockObjectoryDaoImplementation(db);
-      dao = new TestObjectoryDao( "collection", daoImpl );
+      dao = new TestObjectoryDao( MockEntity, daoImpl );
+      collection = new MockObjectoryCollection();
       entity = new MockEntity();
       
-      daoImpl.when(callsTo("get _db")).alwaysReturn(db);
+      //daoImpl.when(callsTo("get _db")).alwaysReturn(db);
+      db.when( callsTo("[]",equals(MockEntity)) ).alwaysReturn( collection );
       entity.when(callsTo("get id")).alwaysReturn("lili");
     });
     
@@ -103,13 +110,13 @@ void main() {
       return dbList;
     }
 
-    test( "getById() calls Objectory.findOne() with correct query", () {
+    test( "getById() calls ObjectoryCollection.find() with correct query", () {
 
-      db.when( callsTo("findOne",anything) ).alwaysReturn( new Future.value(new MockEntity()) );
+      collection.when( callsTo("find",anything) ).alwaysReturn( new Future.value([new MockEntity()]) );
       
       return dao.getById("lili").then( (entity) {
-        var query = db.getLogs( callsTo("findOne", anything ) ).first.args[0].toString();
-        expect( query, equals("ObjectoryQueryBuilder(collection {_id: ObjectId(lili)})") );
+        var query = collection.calls("find", anything ).first.args[0].toString();
+        expect( query, equals(r"ObjectoryQueryBuilder({$query: {_id: ObjectId(lili)}})") );
       });
     });
 
@@ -120,7 +127,7 @@ void main() {
       db.when( callsTo("save",anything) ).alwaysReturn( new Future.value() );
       
       return dao.save(entity).then( (id) {
-        db.getLogs( callsTo("save",entity) ).verify( happenedOnce );
+        db.calls("save",entity).verify( happenedOnce );
         expect( id, equals("lili") );
       });
     });
@@ -128,12 +135,12 @@ void main() {
     test( "findAll() calls Objectory.find() with correct query and DaoImplementation.createList()", () {
       var dbList = _createListOfMockEntitiesWithId(2);
       
-      db.when( callsTo("find") ).alwaysReturn( new Future.value(dbList) );
-      daoImpl.when( callsTo("createList","collection") ).alwaysReturn( new List<MockEntity>() );
+      collection.when( callsTo("find") ).alwaysReturn( new Future.value(dbList) );
+      daoImpl.when( callsTo("createList",MockEntity) ).alwaysReturn( new List<MockEntity>() );
 
       return dao.findAll().then( (list) {
-        daoImpl.getLogs( callsTo("createList",anything) ).verify( happenedOnce );
-        db.getLogs( callsTo("find") ).verify( happenedOnce );
+        daoImpl.calls("createList",anything).verify( happenedOnce );
+        collection.calls("find").verify( happenedOnce );
         expect( list, new isInstanceOf<List<MockEntity>>("List<MockEntity>") );
         expect( list, equals(dbList) );
       });
@@ -144,7 +151,7 @@ void main() {
       db.when( callsTo("remove",entity) ).alwaysReturn( new Future.value() );
       
       return dao.delete(entity).then( (_) {
-        db.getLogs( callsTo("remove",entity) ).verify( happenedOnce );
+        db.calls("remove",entity).verify( happenedOnce );
       });
     });
     

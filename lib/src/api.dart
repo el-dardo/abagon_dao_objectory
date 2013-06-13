@@ -29,32 +29,46 @@ class ObjectoryDaoImplementation extends DaoImplementation {
 
 abstract class ObjectoryDao<T extends ObjectoryModelEntity> implements Dao<T> {
 
-  final String _collectionName;
+  final Type _collection;
   final ObjectoryDaoImplementation _daoImpl;
   
-  const ObjectoryDao(this._collectionName,this._daoImpl);
+  const ObjectoryDao(this._collection,this._daoImpl);
   
-  ObjectoryQueryBuilder get _query => new ObjectoryQueryBuilder(_collectionName);
+  ObjectoryCollection get collection => _db[_collection];
   Objectory get _db => _daoImpl._db;
 
   Future<T> getById( String id ) {
-    var selector = _query.eq("_id", new ObjectId.fromHexString(id));
-    return _db.findOne(selector);
+    return safeRun( () {
+      return collection.find( where.id( new ObjectId.fromHexString(id) ) ).then( (items) {
+        if( items.length==1 ) {
+          return items[0];
+        } else {
+          throw new DaoItemNotFoundException(_collection, id);
+        }
+      });
+    }).catchError( (err) {
+      // TODO: remove this when objectory is fixed
+      if( err is DaoStoreException && err.cause is RangeError ) {
+        throw new DaoItemNotFoundException(_collection, id);
+      } else {
+        throw err;
+      }
+    });
   }
   
-  Future<ObjectId> save( T entity ) {
+  Future<ObjectId> save( T entity ) => safeRun( () {
     return _db.save(entity).then( (_) {
       return entity.uniqueId;
     });
-  }
+  });
 
-  Future<List<T>> findAll() {
-    return _wrapList( _db.find( _query ), _daoImpl.createList(_collectionName) );
-  }
+  Future<List<T>> findAll() => safeRun( () {
+    return _wrapList( _db[_collection].find(), _daoImpl.createList(_collection) );
+  });
   
-  Future delete( T entity ) {
+  Future delete( T entity ) => safeRun( () {
     return _db.remove(entity);
-  }
+  });
   
   Future<T> _wrap( Future<PersistentObject> future ) {
     return future;
@@ -74,6 +88,16 @@ abstract class ObjectoryDao<T extends ObjectoryModelEntity> implements Dao<T> {
     return completer.future;
   }
   
+  /**
+   * Safely execute a [computation] catching all possible exceptions. 
+   */
+  Future safeRun( computation() ) {
+    return new Future.sync( () {
+      return computation();      
+    }).catchError( (err) {
+      throw new DaoStoreException(err);
+    });
+  }
 }
 
 abstract class ObjectoryModelEntity extends PersistentObject implements ModelEntity {
@@ -83,6 +107,8 @@ abstract class ObjectoryModelEntity extends PersistentObject implements ModelEnt
   ObjectoryModelEntity(this._dbType);
   
   String get dbType => _dbType;
+  
   String get uniqueId => id.toHexString();
+  set uniqueId( String value ) => id = (value==null) ? null : new ObjectId.fromHexString(value);
 
 }
