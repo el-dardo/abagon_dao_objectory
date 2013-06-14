@@ -17,7 +17,7 @@ abstract class Entry implements ModelEntity {
   String activity;
   
   factory Entry([DateTime date, num hours, String activity]) => 
-    abagon.createEntity("Entry")
+    abagon.createEntity(Entry)
       ..date = date
       ..hours = hours
       ..activity = activity;
@@ -28,7 +28,7 @@ abstract class Entry implements ModelEntity {
  * [EntryDao] is the [Dao] definition for [Entry]
  */
 abstract class EntryDao implements Dao<Entry> {
-  factory EntryDao() => abagon.createDao("Entry");
+  factory EntryDao() => abagon.createDao(Entry);
   
   Future<Entry> getByDate( DateTime date );
   Future<List<Entry>> findByMonth( DateTime month );

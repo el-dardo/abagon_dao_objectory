@@ -4,10 +4,10 @@ author: www.eldardo.org
 description: A library to implement DAOs based on abagon_dao's specification and using objectory/mongo_dart as DB driver.
 homepage: https://github.com/el-dardo/abagon_dao_objectory
 dependencies:
-  objectory: any
-  mongo_dart: any
   abagon_dao:
-    git: https://github.com/el-dardo/abagon_dao.git
+    path: /Users/Ivan/Documents/Dart/eldardo.org/abagon_dao
+  mongo_dart: any
+  objectory: any
 dev_dependencies:
   unittest: any
 

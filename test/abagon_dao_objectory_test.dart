@@ -3,23 +3,13 @@ library abagon_dao_objectory;
 import "package:unittest/unittest.dart";
 import "package:unittest/mock.dart";
 
-import "dart:async";
-import "package:abagon_dao/abagon_dao.dart";
-import 'package:bson/bson.dart';
-import 'package:objectory/src/objectory_query_builder.dart';
-import 'package:objectory/src/objectory_base.dart';
-import 'package:objectory/src/persistent_object.dart';
-import 'package:objectory/src/objectory_direct_connection_impl.dart';
+import "dart:async" show Future;
 
-part "../lib/src/api.dart";
+import "package:abagon_dao_objectory/abagon_dao_objectory.dart";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Mocks
 class MockObjectory extends Mock implements Objectory {}
-class MockObjectoryDaoImplementation extends Mock implements ObjectoryDaoImplementation {
-  final Objectory _db;
-  MockObjectoryDaoImplementation(this._db);
-}
 class MockObjectoryCollection extends Mock implements ObjectoryCollection {}
 class MockEntity extends Mock implements ObjectoryModelEntity {}
 
@@ -44,7 +34,7 @@ void main() {
 
     setUp( () {
       mockDb = new MockObjectory();
-      impl = new ObjectoryDaoImplementation( dbUri, mockDb );
+      impl = new ObjectoryDaoImplementation.test( dbUri, mockDb );
     });
     
     test( "init() calls Objectory.initDomainModel()", () {
@@ -65,14 +55,14 @@ void main() {
       });
     });
 
-    test( "_registerClassesCallback registers domain classes in Objectory", () {
-      const types = const [ String, int, bool ];
+    test( "internalRegisterClassesCallback() registers domain classes in Objectory", () {
+      List<Type> types = [ String, int, bool ];
       
       for( var i=0 ; i<types.length ; i++ ) {
         impl.registerClass( types[i], (_)=>null, ()=>null, ()=>null );
       }
       
-      impl._registerClassesCallback();
+      impl.internalRegisterClassesCallback();
 
       for( var i=0 ; i<types.length ; i++ ) {
         mockDb.calls("registerClass",types[i],anything).verify(happenedOnce);
@@ -84,14 +74,14 @@ void main() {
   group( "ObjectoryDao:", () {
 
     MockObjectory db;
-    MockObjectoryDaoImplementation daoImpl;
+    ObjectoryDaoImplementation daoImpl;
     TestObjectoryDao dao;
     MockObjectoryCollection collection;
     MockEntity entity;
 
     setUp( () {
       db = new MockObjectory();
-      daoImpl = new MockObjectoryDaoImplementation(db);
+      daoImpl = new ObjectoryDaoImplementation.test("db://uri",db);
       dao = new TestObjectoryDao( MockEntity, daoImpl );
       collection = new MockObjectoryCollection();
       entity = new MockEntity();
@@ -132,16 +122,13 @@ void main() {
       });
     });
 
-    test( "findAll() calls Objectory.find() with correct query and DaoImplementation.createList()", () {
+    test( "findAll() calls Objectory.find() with no query", () {
       var dbList = _createListOfMockEntitiesWithId(2);
       
       collection.when( callsTo("find") ).alwaysReturn( new Future.value(dbList) );
-      daoImpl.when( callsTo("createList",MockEntity) ).alwaysReturn( new List<MockEntity>() );
 
       return dao.findAll().then( (list) {
-        daoImpl.calls("createList",anything).verify( happenedOnce );
         collection.calls("find").verify( happenedOnce );
-        expect( list, new isInstanceOf<List<MockEntity>>("List<MockEntity>") );
         expect( list, equals(dbList) );
       });
     });

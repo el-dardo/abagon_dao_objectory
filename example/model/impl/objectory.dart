@@ -2,8 +2,9 @@ library model_impl_objectory;
 
 import "dart:async";
 
-import "../model.dart";
-import "../../../lib/abagon_dao_objectory.dart";
+import "package:abagon_dao_objectory/abagon_dao_objectory.dart";
+
+import "../entities.dart";
 
 /**
  * This is the implementation of the abstract example model for the objectory
@@ -17,7 +18,7 @@ import "../../../lib/abagon_dao_objectory.dart";
  */
 Future initializeModel( String dbUri ) {
   return initializeAbagonDao( new ObjectoryDaoImplementation(dbUri)
-      ..registerClass( "Entry", (daoImpl)=>new _EntryDao(daoImpl), ()=>new _Entry(), ()=>new List<_Entry>() )
+      ..registerClass( Entry, (daoImpl)=>new _EntryDao(daoImpl), ()=>new _Entry(), ()=>new List<_Entry>() )
   );
 }
 
@@ -57,18 +58,25 @@ class _Entry extends ObjectoryModelEntity implements Entry {
  */
 class _EntryDao extends ObjectoryDao<_Entry> implements EntryDao {
   
-  _EntryDao(ObjectoryDaoImplementation daoImpl) : super("Entry",daoImpl);
+  _EntryDao(ObjectoryDaoImplementation daoImpl) : super(Entry,daoImpl);
 
   Future<Entry> getByDate( DateTime date ) {
-    var selector = _query.eq("date", date);
-    return _wrap( _db.findOne(selector) );
+    var query = where.eq( "date", date );
+    return collection.find( query ).then( (items) {
+      if( items.length==1 ) {
+        return items[0];
+      } else {
+        return null;
+      }
+    });
   }
   
   Future<List<Entry>> findByMonth( DateTime month ) {
     var start = new DateTime(month.year,month.month,1);
     var end = new DateTime(month.year,month.month+1,1);
-    var selector = _query.range( "date", start, end, true, false );
-    return _wrapList( _db.find(selector), new List<Entry>() );
+    var query = where.inRange("date", start, end, minInclude: true, maxInclude: false);
+    return collection.find( query ) as Future<List<Entry>>;
   }
+  
 }
 
