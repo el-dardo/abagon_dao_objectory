@@ -5,7 +5,7 @@ description: A library to implement DAOs based on abagon_dao's specification and
 homepage: https://github.com/el-dardo/abagon_dao_objectory
 dependencies:
   abagon_dao:
-    path: /Users/Ivan/Documents/Dart/eldardo.org/abagon_dao
+    git: https://github.com/el-dardo/abagon_dao.git
   mongo_dart: any
   objectory: any
 dev_dependencies:
